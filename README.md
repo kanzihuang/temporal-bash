@@ -1,2 +1,1 @@
-# temporal-shell
-Temporal Shell
+# Temporal Shell
