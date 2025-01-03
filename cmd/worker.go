@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"github.com/kanzihuang/temporal-shell/internal/worker"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -13,8 +15,20 @@ var workerCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(viper.GetStringMapString("activity"))
+	RunE: func(cmd *cobra.Command, args []string) error {
+		taskQueue := viper.GetString("task-queue")
+		if len(taskQueue) == 0 {
+			return errors.New("task-queue is required")
+		}
+		activityMap := viper.GetStringMapString("activity")
+		if len(activityMap) == 0 {
+			return errors.New("activity is required")
+		}
+		return worker.Run(
+			viper.GetString("address"),
+			viper.GetString("namespace"),
+			taskQueue,
+			activityMap)
 	},
 }
 
