@@ -24,7 +24,7 @@ func Run(address string, namespace string, taskQueue string, activityMap map[str
 	hostWorker := worker.New(c, hostTaskQueue, worker.Options{})
 	hostWorker.RegisterActivityWithOptions(shell.ReadFile, activity.RegisterOptions{Name: common.ReadFile})
 	for name, command := range activityMap {
-		hostWorker.RegisterActivityWithOptions(shell.BuildExecute(command), activity.RegisterOptions{Name: name})
+		hostWorker.RegisterActivityWithOptions(shell.BuildBash(command), activity.RegisterOptions{Name: name})
 	}
 	if err := hostWorker.Start(); err != nil {
 		return err

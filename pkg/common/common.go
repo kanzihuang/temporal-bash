@@ -20,10 +20,3 @@ type ReadFileOutput struct {
 	Path string
 	Data []byte
 }
-
-type ActivityInput struct {
-	Arguments map[string]string
-}
-
-type ActivityOutput struct {
-}
