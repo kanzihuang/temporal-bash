@@ -24,20 +24,31 @@ type ActivityTestSuite struct {
 
 func (s *ActivityTestSuite) SetupTest() {
 	s.env = s.NewTestActivityEnvironment()
-	s.env.RegisterActivityWithOptions(BuildGetHostTaskQueue(hostTaskQueue), activity.RegisterOptions{Name: common.GetHostTaskQueue})
-	s.env.RegisterActivityWithOptions(BuildGetHostTaskQueue(hostTaskQueue), activity.RegisterOptions{Name: common.GetHostTaskQueue})
-	s.env.RegisterActivityWithOptions(ReadFile, activity.RegisterOptions{Name: common.ReadFile})
+	s.env.RegisterActivity(NewActivities(hostTaskQueue))
 }
 
-func (s *ActivityTestSuite) TestGetHostTaskQueue() {
-	val, err := s.env.ExecuteActivity(common.GetHostTaskQueue)
-	s.NoError(err)
-	s.True(val.HasValue())
+func (s *ActivityTestSuite) begin() common.BeginOutput {
+	r := s.Require()
+	val, err := s.env.ExecuteActivity(common.Begin)
+	r.NoError(err)
+	r.True(val.HasValue())
+	var output common.BeginOutput
+	err = val.Get(&output)
+	r.NoError(err)
+	r.Equal(hostTaskQueue, output.HostTaskQueue)
+	r.Contains(output.SessionDir, hostTaskQueue)
+	return output
+}
 
-	var taskQueue string
-	err = val.Get(&taskQueue)
-	s.NoError(err)
-	s.Equal(hostTaskQueue, taskQueue)
+func (s *ActivityTestSuite) end(input common.EndInput) {
+	val, err := s.env.ExecuteActivity(common.End, common.EndInput{SessionDir: input.SessionDir})
+	s.Require().NoError(err)
+	s.Require().True(val.HasValue())
+}
+
+func (s *ActivityTestSuite) TestBeginEnd() {
+	output := s.begin()
+	defer s.end(common.EndInput{SessionDir: output.SessionDir})
 }
 
 func (s *ActivityTestSuite) beforeTestReadFile(path string, data []byte) {
@@ -72,16 +83,18 @@ func (s *ActivityTestSuite) TestReadFile() {
 			wantErr: true,
 		},
 	}
+	beginOutput := s.begin()
+	defer s.end(common.EndInput{SessionDir: beginOutput.SessionDir})
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			path := filepath.Join(os.TempDir(), tt.name)
-			s.beforeTestReadFile(path, tt.data)
-			defer s.afterTestReadFile(path)
+			fileName := filepath.Join(beginOutput.SessionDir, tt.name)
+			s.beforeTestReadFile(fileName, tt.data)
+			defer s.afterTestReadFile(fileName)
 
 			require := s.Require()
 			val, err := s.env.ExecuteActivity(common.ReadFile, common.ReadFileInput{
-				Name: tt.name,
-				Path: path,
+				SessionDir: beginOutput.SessionDir,
+				FileName:   tt.name,
 			})
 			if tt.wantErr {
 				require.Error(err)
@@ -93,8 +106,6 @@ func (s *ActivityTestSuite) TestReadFile() {
 			var output common.ReadFileOutput
 			err = val.Get(&output)
 			require.NoError(err)
-			require.Equal(tt.name, output.Name)
-			require.Equal(path, output.Path)
 			require.Equal(tt.data, output.Data)
 		})
 	}
@@ -190,6 +201,8 @@ func (s *ActivityTestSuite) TestBash() {
 				[]byte("\n... omitting 1 bytes ...\n")...), make([]byte, prefixSuffixLength)...),
 		},
 	}
+	beginOutput := s.begin()
+	defer s.end(common.EndInput{SessionDir: beginOutput.SessionDir})
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			require := s.Require()

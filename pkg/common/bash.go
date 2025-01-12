@@ -1,9 +1,5 @@
 package common
 
-const (
-	Bash = "bash"
-)
-
 type BashInput struct {
 	Args       map[string]string
 	StdinData  []byte

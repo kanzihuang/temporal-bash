@@ -9,15 +9,29 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 const (
 	prefixSuffixLength = 32 << 10
 )
 
+type Activities struct {
+	hostTaskQueue string
+}
+
+func NewActivities(hostTaskQueue string) *Activities {
+	return &Activities{
+		hostTaskQueue: hostTaskQueue,
+	}
+}
+
 // ReadFile read file with temporal, and return error "blob too large" if file size is greater than common.BlobSizeMax
-func ReadFile(_ context.Context, input common.ReadFileInput) (common.ReadFileOutput, error) {
-	f, err := os.Open(input.Path)
+func (a Activities) ReadFile(_ context.Context, input common.ReadFileInput) (common.ReadFileOutput, error) {
+	if err := a.matchSessionDir(input.SessionDir); err != nil {
+		return common.ReadFileOutput{}, err
+	}
+	f, err := os.Open(filepath.Join(input.SessionDir, input.FileName))
 	if err != nil {
 		return common.ReadFileOutput{}, err
 	}
@@ -33,16 +47,40 @@ func ReadFile(_ context.Context, input common.ReadFileInput) (common.ReadFileOut
 		return common.ReadFileOutput{}, common.ErrBlobTooLarge
 	}
 	return common.ReadFileOutput{
-		Name: input.Name,
-		Path: input.Path,
 		Data: data,
 	}, nil
 }
 
-func BuildGetHostTaskQueue(hostTaskQueue string) func() (string, error) {
-	return func() (string, error) {
-		return hostTaskQueue, nil
+func (a Activities) Begin(_ context.Context, _ common.BeginInput) (common.BeginOutput, error) {
+	sessionDir, err := os.MkdirTemp(os.TempDir(), a.hostTaskQueue+"-")
+	if err != nil {
+		return common.BeginOutput{}, err
 	}
+	return common.BeginOutput{
+		HostTaskQueue: a.hostTaskQueue,
+		SessionDir:    sessionDir,
+	}, nil
+}
+
+func (a Activities) End(_ context.Context, input common.EndInput) (common.EndOutput, error) {
+	if err := a.matchSessionDir(input.SessionDir); err != nil {
+		return common.EndOutput{}, err
+	}
+	if err := os.RemoveAll(input.SessionDir); err != nil {
+		return common.EndOutput{}, err
+	}
+	return common.EndOutput{}, nil
+}
+
+func (a Activities) matchSessionDir(dir string) error {
+	matched, err := filepath.Match(filepath.Join(os.TempDir(), a.hostTaskQueue+"-*"), dir)
+	if err != nil {
+		return err
+	}
+	if !matched {
+		return errors.New("invalid session directory")
+	}
+	return nil
 }
 
 func BuildBash(command string) func(ctx context.Context, input common.BashInput) (common.BashOutput, error) {

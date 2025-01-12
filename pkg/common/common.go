@@ -1,8 +1,9 @@
 package common
 
 const (
-	GetHostTaskQueue string = "GetHostTaskQueue"
-	ReadFile         string = "ReadFile"
+	Begin    string = "Begin"
+	End      string = "End"
+	ReadFile string = "ReadFile"
 )
 
 const (
@@ -11,12 +12,21 @@ const (
 )
 
 type ReadFileInput struct {
-	Name string
-	Path string
+	SessionDir string
+	FileName   string
 }
 
 type ReadFileOutput struct {
-	Name string
-	Path string
 	Data []byte
 }
+
+type BeginInput struct{}
+type BeginOutput struct {
+	HostTaskQueue string
+	SessionDir    string
+}
+
+type EndInput struct {
+	SessionDir string
+}
+type EndOutput struct{}
