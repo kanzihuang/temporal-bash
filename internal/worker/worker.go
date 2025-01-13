@@ -21,7 +21,7 @@ func Run(address string, namespace string, taskQueue string, activityMap map[str
 	hostTaskQueue := taskQueue + "-" + uuid.Must(uuid.NewV7()).String()
 	activities := shell.NewActivities(hostTaskQueue)
 
-	hostWorker := worker.New(c, hostTaskQueue, worker.Options{})
+	hostWorker := worker.New(c, hostTaskQueue, worker.Options{DisableWorkflowWorker: true})
 	hostWorker.RegisterActivity(activities)
 	for name, command := range activityMap {
 		hostWorker.RegisterActivityWithOptions(shell.BuildBash(command), activity.RegisterOptions{Name: name})
@@ -30,7 +30,7 @@ func Run(address string, namespace string, taskQueue string, activityMap map[str
 		return err
 	}
 
-	routeWorker := worker.New(c, taskQueue, worker.Options{})
+	routeWorker := worker.New(c, taskQueue, worker.Options{DisableWorkflowWorker: true})
 	routeWorker.RegisterActivity(activities.Begin)
 	if err := routeWorker.Start(); err != nil {
 		return err
