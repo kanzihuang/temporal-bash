@@ -1,4 +1,4 @@
-package common
+package shell
 
 type BashInput struct {
 	Args       map[string]string

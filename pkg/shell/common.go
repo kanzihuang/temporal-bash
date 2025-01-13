@@ -1,4 +1,4 @@
-package common
+package shell
 
 const (
 	Begin    string = "Begin"

@@ -1,7 +1,7 @@
 package shell
 
 import (
-	"github.com/kanzihuang/temporal-shell/pkg/common"
+	"github.com/kanzihuang/temporal-shell/pkg/shell"
 	"github.com/stretchr/testify/suite"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/testsuite"
@@ -27,12 +27,12 @@ func (s *ActivityTestSuite) SetupTest() {
 	s.env.RegisterActivity(NewActivities(hostTaskQueue))
 }
 
-func (s *ActivityTestSuite) begin() common.BeginOutput {
+func (s *ActivityTestSuite) begin() shell.BeginOutput {
 	r := s.Require()
-	val, err := s.env.ExecuteActivity(common.Begin)
+	val, err := s.env.ExecuteActivity(shell.Begin)
 	r.NoError(err)
 	r.True(val.HasValue())
-	var output common.BeginOutput
+	var output shell.BeginOutput
 	err = val.Get(&output)
 	r.NoError(err)
 	r.Equal(hostTaskQueue, output.HostTaskQueue)
@@ -40,15 +40,15 @@ func (s *ActivityTestSuite) begin() common.BeginOutput {
 	return output
 }
 
-func (s *ActivityTestSuite) end(input common.EndInput) {
-	val, err := s.env.ExecuteActivity(common.End, common.EndInput{SessionDir: input.SessionDir})
+func (s *ActivityTestSuite) end(input shell.EndInput) {
+	val, err := s.env.ExecuteActivity(shell.End, shell.EndInput{SessionDir: input.SessionDir})
 	s.Require().NoError(err)
 	s.Require().True(val.HasValue())
 }
 
 func (s *ActivityTestSuite) TestBeginEnd() {
 	output := s.begin()
-	defer s.end(common.EndInput{SessionDir: output.SessionDir})
+	defer s.end(shell.EndInput{SessionDir: output.SessionDir})
 }
 
 func (s *ActivityTestSuite) beforeTestReadFile(path string, data []byte) {
@@ -74,17 +74,17 @@ func (s *ActivityTestSuite) TestReadFile() {
 		},
 		{
 			name:    "test-read-file-valid-size",
-			data:    make([]byte, common.BlobSizeMax),
+			data:    make([]byte, shell.BlobSizeMax),
 			wantErr: false,
 		},
 		{
 			name:    "test-read-file-too-large",
-			data:    make([]byte, common.BlobSizeMax+1),
+			data:    make([]byte, shell.BlobSizeMax+1),
 			wantErr: true,
 		},
 	}
 	beginOutput := s.begin()
-	defer s.end(common.EndInput{SessionDir: beginOutput.SessionDir})
+	defer s.end(shell.EndInput{SessionDir: beginOutput.SessionDir})
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			fileName := filepath.Join(beginOutput.SessionDir, tt.name)
@@ -92,7 +92,7 @@ func (s *ActivityTestSuite) TestReadFile() {
 			defer s.afterTestReadFile(fileName)
 
 			require := s.Require()
-			val, err := s.env.ExecuteActivity(common.ReadFile, common.ReadFileInput{
+			val, err := s.env.ExecuteActivity(shell.ReadFile, shell.ReadFileInput{
 				SessionDir: beginOutput.SessionDir,
 				FileName:   tt.name,
 			})
@@ -103,7 +103,7 @@ func (s *ActivityTestSuite) TestReadFile() {
 			require.NoError(err)
 			require.True(val.HasValue())
 
-			var output common.ReadFileOutput
+			var output shell.ReadFileOutput
 			err = val.Get(&output)
 			require.NoError(err)
 			require.Equal(tt.data, output.Data)
@@ -183,12 +183,12 @@ func (s *ActivityTestSuite) TestBash() {
 		{
 			name:      "cat stdio without stdout",
 			command:   "cat",
-			stdinData: make([]byte, common.BlobSizeMax+1),
+			stdinData: make([]byte, shell.BlobSizeMax+1),
 		},
 		{
 			name:       "cat stdio with too large stdout",
 			command:    "cat",
-			stdinData:  make([]byte, common.BlobSizeMax+1),
+			stdinData:  make([]byte, shell.BlobSizeMax+1),
 			withStdout: true,
 			wantErr:    true,
 		},
@@ -202,12 +202,12 @@ func (s *ActivityTestSuite) TestBash() {
 		},
 	}
 	beginOutput := s.begin()
-	defer s.end(common.EndInput{SessionDir: beginOutput.SessionDir})
+	defer s.end(shell.EndInput{SessionDir: beginOutput.SessionDir})
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			require := s.Require()
 			s.env.RegisterActivityWithOptions(BuildBash(tt.command), activity.RegisterOptions{Name: tt.name})
-			val, err := s.env.ExecuteActivity(tt.name, common.BashInput{
+			val, err := s.env.ExecuteActivity(tt.name, shell.BashInput{
 				WithStdout: tt.withStdout,
 				WithStderr: tt.withStderr,
 				Args:       tt.args,
@@ -220,7 +220,7 @@ func (s *ActivityTestSuite) TestBash() {
 			require.NoError(err)
 			require.True(val.HasValue())
 
-			var output common.BashOutput
+			var output shell.BashOutput
 			err = val.Get(&output)
 			require.NoError(err)
 			require.Equal(tt.wantExitCode, output.ExitCode)
