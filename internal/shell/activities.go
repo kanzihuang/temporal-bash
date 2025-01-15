@@ -83,13 +83,13 @@ func (a Activities) matchSessionDir(dir string) error {
 	return nil
 }
 
-func BuildBash(command string) func(ctx context.Context, input shell.BashInput) (shell.BashOutput, error) {
+func BuildBash(originCommand string) func(ctx context.Context, input shell.BashInput) (shell.BashOutput, error) {
 	return func(ctx context.Context, input shell.BashInput) (shell.BashOutput, error) {
 		var err error
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
-		command = os.Expand(command, func(s string) string {
-			return input.Args[s]
+		command := os.Expand(originCommand, func(s string) string {
+			return "'" + input.Args[s] + "'"
 		})
 		cmd := exec.CommandContext(ctx, "bash", "-c", command)
 		cmd.Stdin = bytes.NewReader(input.StdinData)
@@ -97,7 +97,7 @@ func BuildBash(command string) func(ctx context.Context, input shell.BashInput) 
 		if input.WithStdout {
 			stdout, err = cmd.StdoutPipe()
 			if err != nil {
-				return shell.BashOutput{}, err
+				return shell.BashOutput{Command: command}, err
 			}
 		} else {
 			cmd.Stdout = os.Stdout
@@ -108,19 +108,19 @@ func BuildBash(command string) func(ctx context.Context, input shell.BashInput) 
 			cmd.Stderr = os.Stderr
 		}
 		if err := cmd.Start(); err != nil {
-			return shell.BashOutput{}, err
+			return shell.BashOutput{Command: command}, err
 		}
 
 		var stdoutData []byte
 		if input.WithStdout {
 			stdoutData, err = io.ReadAll(io.LimitReader(stdout, shell.BlobSizeMax+1))
 			if err != nil {
-				return shell.BashOutput{}, err
+				return shell.BashOutput{Command: command}, err
 			}
 			if len(stdoutData) > shell.BlobSizeMax {
 				cancel()
 				_ = cmd.Wait()
-				return shell.BashOutput{}, fmt.Errorf("stdout data is too large:  %w", shell.ErrBlobTooLarge)
+				return shell.BashOutput{Command: command}, fmt.Errorf("stdout data is too large:  %w", shell.ErrBlobTooLarge)
 			}
 		}
 
@@ -134,17 +134,20 @@ func BuildBash(command string) func(ctx context.Context, input shell.BashInput) 
 		switch {
 		case err == nil:
 			return shell.BashOutput{
+				Command:    command,
 				StdoutData: stdoutData,
 				StderrData: stderrData,
 			}, nil
 		case errors.As(err, &exitError):
 			return shell.BashOutput{
+				Command:    command,
 				ExitCode:   exitError.ExitCode(),
 				StdoutData: stdoutData,
 				StderrData: stderrData,
 			}, nil
 		default:
 			return shell.BashOutput{
+				Command:    command,
 				ExitCode:   1,
 				StdoutData: stdoutData,
 				StderrData: stderrData,

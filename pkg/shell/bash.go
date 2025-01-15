@@ -8,6 +8,7 @@ type BashInput struct {
 }
 
 type BashOutput struct {
+	Command    string
 	ExitCode   int
 	StdoutData []byte
 	StderrData []byte
