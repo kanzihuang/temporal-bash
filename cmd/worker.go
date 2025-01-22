@@ -3,7 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"github.com/kanzihuang/temporal-shell/internal/worker"
+	"github.com/kanzihuang/temporal-bash/internal/worker"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -47,7 +47,7 @@ func init() {
 	viper.MustBindEnv("namespace", "TEMPORAL_NAMESPACE")
 	workerCmd.Flags().StringP("task-queue", "t", "", "Task Queue. [$TEMPORAL_TASK_QUEUE]")
 	viper.MustBindEnv("task-queue", "TEMPORAL_TASK_QUEUE")
-	workerCmd.Flags().StringToStringP("activity", "a", nil, "Mapping activity name to shell command.")
+	workerCmd.Flags().StringToStringP("activity", "a", nil, "Mapping activity name to bash command.")
 
 	if err := viper.BindPFlags(workerCmd.Flags()); err != nil {
 		panic(fmt.Sprintf("error while binding pflags: %v", err))

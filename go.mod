@@ -1,4 +1,4 @@
-module github.com/kanzihuang/temporal-shell
+module github.com/kanzihuang/temporal-bash
 
 go 1.22
 
@@ -52,4 +52,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/kanzihuang/temporal-shell => ./
+replace github.com/kanzihuang/temporal-bash => ./

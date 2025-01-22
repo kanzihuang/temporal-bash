@@ -10,7 +10,7 @@ RUN go mod download
 
 COPY . ./
 RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux \
-    go build -ldflags="-w -s" -o ./temporal-shell ./main.go
+    go build -ldflags="-w -s" -o ./temporal-bash ./main.go
 
 FROM alpine:3.21
 
@@ -23,6 +23,6 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
         bash \
         skopeo
 
-COPY --from=builder /app/temporal-shell /app/obsutil_linux_amd64_*/obsutil /usr/local/bin/
+COPY --from=builder /app/temporal-bash /app/obsutil_linux_amd64_*/obsutil /usr/local/bin/
 
-ENTRYPOINT ["/usr/local/bin/temporal-shell"]
+ENTRYPOINT ["/usr/local/bin/temporal-bash"]

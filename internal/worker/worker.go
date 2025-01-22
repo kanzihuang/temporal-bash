@@ -2,7 +2,7 @@ package worker
 
 import (
 	"github.com/google/uuid"
-	"github.com/kanzihuang/temporal-shell/internal/shell"
+	"github.com/kanzihuang/temporal-bash/internal/bash"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
@@ -19,12 +19,12 @@ func Run(address string, namespace string, taskQueue string, activityMap map[str
 	defer c.Close()
 
 	hostTaskQueue := taskQueue + "-" + uuid.Must(uuid.NewV7()).String()
-	activities := shell.NewActivities(hostTaskQueue)
+	activities := bash.NewActivities(hostTaskQueue)
 
 	hostWorker := worker.New(c, hostTaskQueue, worker.Options{DisableWorkflowWorker: true})
 	hostWorker.RegisterActivity(activities)
 	for name, command := range activityMap {
-		hostWorker.RegisterActivityWithOptions(shell.BuildBash(command), activity.RegisterOptions{Name: name})
+		hostWorker.RegisterActivityWithOptions(bash.BuildBash(command), activity.RegisterOptions{Name: name})
 	}
 	if err := hostWorker.Start(); err != nil {
 		return err

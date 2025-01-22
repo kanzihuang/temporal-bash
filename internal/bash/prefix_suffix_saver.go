@@ -1,4 +1,4 @@
-package shell
+package bash
 
 import (
 	"bytes"

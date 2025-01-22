@@ -7,8 +7,8 @@ import (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "temporal-shell",
-	Short: "register shell activities for temporal",
+	Use:   "temporal-bash",
+	Short: "register bash activities for temporal",
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

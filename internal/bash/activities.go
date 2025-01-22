@@ -1,11 +1,11 @@
-package shell
+package bash
 
 import (
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"github.com/kanzihuang/temporal-shell/pkg/shell"
+	"github.com/kanzihuang/temporal-bash/pkg/bash"
 	"io"
 	"os"
 	"os/exec"
@@ -26,50 +26,50 @@ func NewActivities(hostTaskQueue string) *Activities {
 	}
 }
 
-// ReadFile read file with temporal, and return error "blob too large" if file size is greater than shell.BlobSizeMax
-func (a Activities) ReadFile(_ context.Context, input shell.ReadFileInput) (shell.ReadFileOutput, error) {
+// ReadFile read file with temporal, and return error "blob too large" if file size is greater than bash.BlobSizeMax
+func (a Activities) ReadFile(_ context.Context, input bash.ReadFileInput) (bash.ReadFileOutput, error) {
 	if err := a.matchSessionDir(input.SessionDir); err != nil {
-		return shell.ReadFileOutput{}, err
+		return bash.ReadFileOutput{}, err
 	}
 	f, err := os.Open(filepath.Join(input.SessionDir, input.FileName))
 	if err != nil {
-		return shell.ReadFileOutput{}, err
+		return bash.ReadFileOutput{}, err
 	}
 	defer func(f *os.File) {
 		_ = f.Close()
 	}(f)
 
-	data, err := io.ReadAll(io.LimitReader(f, shell.BlobSizeMax+1))
+	data, err := io.ReadAll(io.LimitReader(f, bash.BlobSizeMax+1))
 	if err != nil {
-		return shell.ReadFileOutput{}, err
+		return bash.ReadFileOutput{}, err
 	}
-	if len(data) > shell.BlobSizeMax {
-		return shell.ReadFileOutput{}, shell.ErrBlobTooLarge
+	if len(data) > bash.BlobSizeMax {
+		return bash.ReadFileOutput{}, bash.ErrBlobTooLarge
 	}
-	return shell.ReadFileOutput{
+	return bash.ReadFileOutput{
 		Data: data,
 	}, nil
 }
 
-func (a Activities) Begin(_ context.Context, _ shell.BeginInput) (shell.BeginOutput, error) {
+func (a Activities) Begin(_ context.Context, _ bash.BeginInput) (bash.BeginOutput, error) {
 	sessionDir, err := os.MkdirTemp(os.TempDir(), a.hostTaskQueue+"-")
 	if err != nil {
-		return shell.BeginOutput{}, err
+		return bash.BeginOutput{}, err
 	}
-	return shell.BeginOutput{
+	return bash.BeginOutput{
 		HostTaskQueue: a.hostTaskQueue,
 		SessionDir:    sessionDir,
 	}, nil
 }
 
-func (a Activities) End(_ context.Context, input shell.EndInput) (shell.EndOutput, error) {
+func (a Activities) End(_ context.Context, input bash.EndInput) (bash.EndOutput, error) {
 	if err := a.matchSessionDir(input.SessionDir); err != nil {
-		return shell.EndOutput{}, err
+		return bash.EndOutput{}, err
 	}
 	if err := os.RemoveAll(input.SessionDir); err != nil {
-		return shell.EndOutput{}, err
+		return bash.EndOutput{}, err
 	}
-	return shell.EndOutput{}, nil
+	return bash.EndOutput{}, nil
 }
 
 func (a Activities) matchSessionDir(dir string) error {
@@ -83,8 +83,8 @@ func (a Activities) matchSessionDir(dir string) error {
 	return nil
 }
 
-func BuildBash(originCommand string) func(ctx context.Context, input shell.BashInput) (shell.BashOutput, error) {
-	return func(ctx context.Context, input shell.BashInput) (shell.BashOutput, error) {
+func BuildBash(originCommand string) func(ctx context.Context, input bash.Input) (bash.Output, error) {
+	return func(ctx context.Context, input bash.Input) (bash.Output, error) {
 		var err error
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
@@ -97,7 +97,7 @@ func BuildBash(originCommand string) func(ctx context.Context, input shell.BashI
 		if input.WithStdout {
 			stdout, err = cmd.StdoutPipe()
 			if err != nil {
-				return shell.BashOutput{Command: command}, err
+				return bash.Output{Command: command}, err
 			}
 		} else {
 			cmd.Stdout = os.Stdout
@@ -108,19 +108,19 @@ func BuildBash(originCommand string) func(ctx context.Context, input shell.BashI
 			cmd.Stderr = os.Stderr
 		}
 		if err := cmd.Start(); err != nil {
-			return shell.BashOutput{Command: command}, err
+			return bash.Output{Command: command}, err
 		}
 
 		var stdoutData []byte
 		if input.WithStdout {
-			stdoutData, err = io.ReadAll(io.LimitReader(stdout, shell.BlobSizeMax+1))
+			stdoutData, err = io.ReadAll(io.LimitReader(stdout, bash.BlobSizeMax+1))
 			if err != nil {
-				return shell.BashOutput{Command: command}, err
+				return bash.Output{Command: command}, err
 			}
-			if len(stdoutData) > shell.BlobSizeMax {
+			if len(stdoutData) > bash.BlobSizeMax {
 				cancel()
 				_ = cmd.Wait()
-				return shell.BashOutput{Command: command}, fmt.Errorf("stdout data is too large:  %w", shell.ErrBlobTooLarge)
+				return bash.Output{Command: command}, fmt.Errorf("stdout data is too large:  %w", bash.ErrBlobTooLarge)
 			}
 		}
 
@@ -133,20 +133,20 @@ func BuildBash(originCommand string) func(ctx context.Context, input shell.BashI
 		var exitError *exec.ExitError
 		switch {
 		case err == nil:
-			return shell.BashOutput{
+			return bash.Output{
 				Command:    command,
 				StdoutData: stdoutData,
 				StderrData: stderrData,
 			}, nil
 		case errors.As(err, &exitError):
-			return shell.BashOutput{
+			return bash.Output{
 				Command:    command,
 				ExitCode:   exitError.ExitCode(),
 				StdoutData: stdoutData,
 				StderrData: stderrData,
 			}, nil
 		default:
-			return shell.BashOutput{
+			return bash.Output{
 				Command:    command,
 				ExitCode:   1,
 				StdoutData: stdoutData,
