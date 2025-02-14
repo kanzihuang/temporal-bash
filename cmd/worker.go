@@ -27,6 +27,7 @@ var workerCmd = &cobra.Command{
 		return worker.Run(
 			viper.GetString("address"),
 			viper.GetString("namespace"),
+			viper.GetBool("tls"),
 			taskQueue,
 			activityMap)
 	},
@@ -45,6 +46,8 @@ func init() {
 	viper.MustBindEnv("address", "TEMPORAL_ADDRESS")
 	workerCmd.Flags().StringP("namespace", "n", "default", "Identifies a Namespace in the Temporal Workflow. [$TEMPORAL_NAMESPACE]")
 	viper.MustBindEnv("namespace", "TEMPORAL_NAMESPACE")
+	workerCmd.Flags().Bool("tls", false, "Enable base TLS encryption. Does not have additional options like mTLS or client certs.. [$TEMPORAL_TLS]")
+	viper.MustBindEnv("tls", "TEMPORAL_TLS")
 	workerCmd.Flags().StringP("task-queue", "t", "", "Task Queue. [$TEMPORAL_TASK_QUEUE]")
 	viper.MustBindEnv("task-queue", "TEMPORAL_TASK_QUEUE")
 	workerCmd.Flags().StringToStringP("activity", "a", nil, "Mapping activity name to bash command.")

@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"crypto/tls"
 	"github.com/google/uuid"
 	"github.com/kanzihuang/temporal-bash/internal/bash"
 	"go.temporal.io/sdk/activity"
@@ -8,11 +9,15 @@ import (
 	"go.temporal.io/sdk/worker"
 )
 
-func Run(address string, namespace string, taskQueue string, activityMap map[string]string) error {
-	c, err := client.Dial(client.Options{
+func Run(address string, namespace string, useTls bool, taskQueue string, activityMap map[string]string) error {
+	opts := client.Options{
 		HostPort:  address,
 		Namespace: namespace,
-	})
+	}
+	if useTls {
+		opts.ConnectionOptions.TLS = &tls.Config{}
+	}
+	c, err := client.Dial(opts)
 	if err != nil {
 		return err
 	}
