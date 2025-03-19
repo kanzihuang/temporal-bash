@@ -14,14 +14,14 @@ RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux \
 
 FROM alpine:3.21
 
-ENV TZ=Asia/Shanghai \
-    REGISTRY_AUTH_FILE=/tmp/auth.json
+ENV TZ=Asia/Shanghai
 
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
-    echo $TZ > /etc/timezone && \
-    apk add --no-cache  \
+RUN apk add --no-cache  \
         bash \
-        skopeo
+        skopeo \
+	tzdata && \ 
+    ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
+    echo $TZ > /etc/timezone
 
 COPY --from=builder /app/temporal-bash /app/obsutil_linux_amd64_*/obsutil /usr/local/bin/
 
