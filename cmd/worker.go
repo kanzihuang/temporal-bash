@@ -28,6 +28,7 @@ var workerCmd = &cobra.Command{
 			viper.GetString("address"),
 			viper.GetString("namespace"),
 			viper.GetBool("tls"),
+			viper.GetInt("max-concurrent-activity-execution-size"),
 			taskQueue,
 			activityMap)
 	},
@@ -50,6 +51,8 @@ func init() {
 	viper.MustBindEnv("tls", "TEMPORAL_TLS")
 	workerCmd.Flags().StringP("task-queue", "t", "", "Task Queue.")
 	workerCmd.Flags().StringToStringP("activity", "a", nil, "Mapping activity name to bash command.")
+	workerCmd.Flags().String("max-concurrent-activity-execution-size", "10", "Max concurrent activity execution size.")
+	viper.MustBindEnv("max-concurrent-activity-execution-size", "MAX_CONCURRENT_ACTIVITY_EXECUTION_SIZE")
 
 	if err := viper.BindPFlags(workerCmd.Flags()); err != nil {
 		panic(fmt.Sprintf("error while binding pflags: %v", err))

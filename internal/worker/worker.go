@@ -14,7 +14,7 @@ import (
 	"syscall"
 )
 
-func Run(address string, namespace string, useTls bool, taskQueue string, activityMap map[string]string) error {
+func Run(address string, namespace string, useTls bool, maxConcurrentActivityExecutionSize int, taskQueue string, activityMap map[string]string) error {
 	opts := client.Options{
 		HostPort:  address,
 		Namespace: namespace,
@@ -36,7 +36,7 @@ func Run(address string, namespace string, useTls bool, taskQueue string, activi
 	ch := make(chan interface{}, 1)
 	g, ctx := errgroup.WithContext(context.Background())
 
-	hostWorker := worker.New(c, hostTaskQueue, worker.Options{DisableWorkflowWorker: true})
+	hostWorker := worker.New(c, hostTaskQueue, worker.Options{DisableWorkflowWorker: true, MaxConcurrentActivityExecutionSize: maxConcurrentActivityExecutionSize})
 	hostWorker.RegisterActivity(activities)
 	for name, command := range activityMap {
 		hostWorker.RegisterActivityWithOptions(bash.BuildBash(command), activity.RegisterOptions{Name: name})
