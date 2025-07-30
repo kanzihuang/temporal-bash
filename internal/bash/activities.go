@@ -9,13 +9,16 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/kanzihuang/temporal-bash/pkg/bash"
+	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/temporal"
 )
 
 const (
-	prefixSuffixLength = 32 << 10
+	prefixSuffixLength       = 32 << 10
+	defaultHeartbeatInterval = 5 * time.Second
 )
 
 type Activities struct {
@@ -90,6 +93,26 @@ func BuildBash(name, originCommand string) func(ctx context.Context, input bash.
 		var err error
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
+
+		// Heartbeat goroutine
+		heartbeatDone := make(chan struct{})
+		go func() {
+			ticker := time.NewTicker(defaultHeartbeatInterval) // 5秒心跳一次
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-heartbeatDone:
+					return
+				case <-ticker.C:
+					activity.RecordHeartbeat(ctx, name+" heartbeat")
+				}
+			}
+		}()
+
+		defer close(heartbeatDone)
+
 		command := os.Expand(originCommand, func(s string) string {
 			return "'" + input.Args[s] + "'"
 		})
