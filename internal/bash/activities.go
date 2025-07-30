@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kanzihuang/temporal-bash/pkg/bash"
+	"go.temporal.io/sdk/temporal"
 	"io"
 	"os"
 	"os/exec"
@@ -144,7 +145,7 @@ func BuildBash(originCommand string) func(ctx context.Context, input bash.Input)
 				ExitCode:   exitError.ExitCode(),
 				StdoutData: stdoutData,
 				StderrData: stderrData,
-			}, nil
+			}, temporal.NewApplicationErrorWithCause()
 		default:
 			return bash.Output{
 				Command:    command,
