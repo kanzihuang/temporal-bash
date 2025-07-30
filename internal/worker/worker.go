@@ -3,15 +3,16 @@ package worker
 import (
 	"context"
 	"crypto/tls"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/google/uuid"
 	"github.com/kanzihuang/temporal-bash/internal/bash"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 	"golang.org/x/sync/errgroup"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 func Run(address string, namespace string, useTls bool, maxConcurrentActivityExecutionSize int, taskQueue string, activityMap map[string]string) error {
@@ -39,7 +40,7 @@ func Run(address string, namespace string, useTls bool, maxConcurrentActivityExe
 	hostWorker := worker.New(c, hostTaskQueue, worker.Options{DisableWorkflowWorker: true, MaxConcurrentActivityExecutionSize: maxConcurrentActivityExecutionSize})
 	hostWorker.RegisterActivity(activities)
 	for name, command := range activityMap {
-		hostWorker.RegisterActivityWithOptions(bash.BuildBash(command), activity.RegisterOptions{Name: name})
+		hostWorker.RegisterActivityWithOptions(bash.BuildBash(name, command), activity.RegisterOptions{Name: name})
 	}
 	g.Go(func() error {
 		return hostWorker.Run(ch)

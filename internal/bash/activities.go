@@ -5,12 +5,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/kanzihuang/temporal-bash/pkg/bash"
-	"go.temporal.io/sdk/temporal"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/kanzihuang/temporal-bash/pkg/bash"
+	"go.temporal.io/sdk/temporal"
 )
 
 const (
@@ -84,7 +85,7 @@ func (a Activities) matchSessionDir(dir string) error {
 	return nil
 }
 
-func BuildBash(originCommand string) func(ctx context.Context, input bash.Input) (bash.Output, error) {
+func BuildBash(name, originCommand string) func(ctx context.Context, input bash.Input) (bash.Output, error) {
 	return func(ctx context.Context, input bash.Input) (bash.Output, error) {
 		var err error
 		ctx, cancel := context.WithCancel(ctx)
@@ -145,7 +146,7 @@ func BuildBash(originCommand string) func(ctx context.Context, input bash.Input)
 				ExitCode:   exitError.ExitCode(),
 				StdoutData: stdoutData,
 				StderrData: stderrData,
-			}, temporal.NewApplicationErrorWithCause()
+			}, temporal.NewApplicationErrorWithCause("failed to "+name, name+"-failure", err)
 		default:
 			return bash.Output{
 				Command:    command,
