@@ -15,7 +15,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func Run(address string, namespace string, useTls bool, maxConcurrentActivityExecutionSize int, taskQueue string, activityMap map[string]string) error {
+func Run(address string, namespace string, useTls bool, maxConcurrentActivityExecutionSize int, taskQueue string, activityMap map[string]string, hostWorkerEnabled bool) error {
 	opts := client.Options{
 		HostPort:  address,
 		Namespace: namespace,
@@ -37,17 +37,25 @@ func Run(address string, namespace string, useTls bool, maxConcurrentActivityExe
 	ch := make(chan interface{}, 1)
 	g, ctx := errgroup.WithContext(context.Background())
 
-	hostWorker := worker.New(c, hostTaskQueue, worker.Options{DisableWorkflowWorker: true, MaxConcurrentActivityExecutionSize: maxConcurrentActivityExecutionSize})
-	hostWorker.RegisterActivity(activities)
-	for name, command := range activityMap {
-		hostWorker.RegisterActivityWithOptions(bash.BuildBash(name, command), activity.RegisterOptions{Name: name})
+	if hostWorkerEnabled {
+		hostWorker := worker.New(c, hostTaskQueue, worker.Options{DisableWorkflowWorker: true, MaxConcurrentActivityExecutionSize: maxConcurrentActivityExecutionSize})
+		hostWorker.RegisterActivity(activities.End)
+		for name, command := range activityMap {
+			hostWorker.RegisterActivityWithOptions(bash.BuildBash(name, command), activity.RegisterOptions{Name: name})
+		}
+		g.Go(func() error {
+			return hostWorker.Run(ch)
+		})
 	}
-	g.Go(func() error {
-		return hostWorker.Run(ch)
-	})
 
-	routeWorker := worker.New(c, taskQueue, worker.Options{DisableWorkflowWorker: true})
-	routeWorker.RegisterActivity(activities.Begin)
+	routeWorker := worker.New(c, taskQueue, worker.Options{DisableWorkflowWorker: true, MaxConcurrentActivityExecutionSize: maxConcurrentActivityExecutionSize})
+	if hostWorkerEnabled {
+		routeWorker.RegisterActivity(activities.Begin)
+	} else {
+		for name, command := range activityMap {
+			routeWorker.RegisterActivityWithOptions(bash.BuildBash(name, command), activity.RegisterOptions{Name: name})
+		}
+	}
 	g.Go(func() error {
 		return routeWorker.Run(ch)
 	})
