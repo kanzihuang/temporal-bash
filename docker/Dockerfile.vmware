@@ -1,0 +1,39 @@
+FROM golang:1.23-bookworm AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . ./
+RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux \
+    go build -ldflags="-w -s" -o ./temporal-bash ./main.go
+
+FROM debian:bookworm-slim
+
+WORKDIR /app
+
+ENV TZ=Asia/Shanghai
+
+ARG ovftool_url='https://dp-downloads.broadcom.com/?file=VMware-ovftool-5.0.0-24781994-lin.x86_64.zip&oid=367131&id=DO5Kn4vp680d-41-TuaAYkclI6dkgC1_laRHUpANPpC98W0U-vYPDq7JU59FRg4=&specDownload=true&verify=1754442569-sL%2BW%2FlXpdoe%2F8s%2BZix0iGJfr96xcIfk2X0DUpOpxpK8%3D'
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y  \
+        bash \
+	busybox \
+        ca-certificates \
+	curl \
+	tzdata \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
+    && echo $TZ > /etc/timezone \
+    && curl -fsSL "${ovftool_url}" | busybox unzip - \
+    && chmod +x ovftool/ovftool ovftool/ovftool.bin
+
+COPY --from=builder /app/temporal-bash /app/
+
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    PATH=/app:/app/ovftool:$PATH
+
+ENTRYPOINT ["/app/temporal-bash"]
